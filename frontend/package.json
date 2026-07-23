@@ -15,7 +15,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true craco build",
+    "build": "cross-env GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true craco build",
     "test": "craco test",
     "eject": "react-scripts eject"
   },
@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0",
-    "concurrently": "^10.0.3"
+    "concurrently": "^10.0.3",
+    "cross-env": "^7.0.3"
   }
 }

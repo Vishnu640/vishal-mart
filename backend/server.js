@@ -32,20 +32,16 @@ app.use('/api/orders', require('./routes/orderRoutes'));
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// Serve React frontend (local dev only)
-if (process.env.NODE_ENV !== 'production') {
+// Serve React frontend in production (if built)
+if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/build')));
-  // Express v5 compatible wildcard
   app.get('/{*path}', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
   });
 }
 
-// Start server for local dev
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5001;
-  app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
-}
+// Always start server (Railway + local dev)
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
 
-// Vercel serverless export
 module.exports = app;

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client'; // eslint-disable-line no-unused-vars
 import API from '../api/axios';
 
 const steps = ['placed', 'confirmed', 'packed', 'out_for_delivery', 'delivered'];
@@ -34,7 +33,7 @@ export default function Orders() {
   const fetchOrders = () => {
     setLoading(true);
     API.get('/orders/my')
-      .then((res) => { setOrders(res.data); setLoading(false); })
+      .then((res) => { setOrders(res.data); setStatuses({}); setLoading(false); })
       .catch(() => setLoading(false));
   };
 

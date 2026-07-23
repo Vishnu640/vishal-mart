@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { io } from 'socket.io-client'; // eslint-disable-line no-unused-vars
 import API from '../api/axios';
 
 export default function Navbar({ cartCount }) {

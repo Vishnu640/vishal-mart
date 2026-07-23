@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client'; // eslint-disable-line no-unused-vars
 import API from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';

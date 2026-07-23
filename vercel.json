@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "outputDirectory": "frontend/build",
   "builds": [
     {
       "src": "frontend/package.json",
@@ -14,17 +13,14 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "backend/server.js"
+      "source": "/api/:path*",
+      "destination": "backend/server.js"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/:path*",
+      "destination": "/index.html"
     }
   ]
 }

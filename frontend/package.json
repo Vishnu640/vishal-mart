@@ -5,6 +5,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.18.1",
+    "cross-env": "^7.0.3",
     "html5-qrcode": "^2.3.8",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -15,8 +16,8 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "cross-env GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true craco build",
-    "vercel-build": "cross-env GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true craco build",
+    "build": "cross-env GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "vercel-build": "cross-env GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "test": "craco test",
     "eject": "react-scripts eject"
   },
@@ -42,5 +43,8 @@
     "@craco/craco": "^7.1.0",
     "concurrently": "^10.0.3",
     "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }

@@ -24,7 +24,7 @@ const connectDB = async () => {
     console.log('All tables synced');
   } catch (error) {
     console.error('DB Connection Failed:', error.message);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'production') process.exit(1);
   }
 };
 

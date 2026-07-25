@@ -43,8 +43,6 @@ app.get('/api/seed', async (req, res) => {
       const hashed = await bcrypt.hash('Admin@123', 10);
       await User.create({ name: 'Admin', email: 'admin@vishalmart.com', password: hashed, role: 'admin', isVerified: true });
     }
-
-    const Product = require('./models/Product');
     const count = await Product.countDocuments();
     if (count === 0) {
       const { products } = require('./seeder');

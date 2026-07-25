@@ -1,5 +1,6 @@
 const { connectDB } = require('./config/db');
 const Product = require('./models/Product');
+require('dotenv').config();
 
 const products = [
   // Grocery (5)
@@ -126,15 +127,15 @@ const products = [
   { name: 'Knife Set 5pcs', category: 'Home Utensils', price: 599, stock: 20, description: 'Stainless steel sharp kitchen knife set', image: 'https://images.unsplash.com/photo-1593618998160-e34014e67546?w=400&q=80' },
 ];
 
-const seed = async () => {
-  await connectDB();
-  await Product.destroy({ where: {} });
-  await Product.bulkCreate(products);
-  console.log(`✅ ${products.length} products seeded successfully!`);
-  process.exit(0);
-};
+module.exports = { products };
 
-seed().catch((err) => {
-  console.error('❌ Seeder failed:', err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  const seed = async () => {
+    await connectDB();
+    await Product.deleteMany({});
+    await Product.insertMany(products);
+    console.log(`✅ ${products.length} products seeded successfully!`);
+    process.exit(0);
+  };
+  seed().catch((err) => { console.error('❌ Seeder failed:', err.message); process.exit(1); });
+}

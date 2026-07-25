@@ -44,7 +44,13 @@ app.get('/api/seed', async (req, res) => {
       await User.create({ name: 'Admin', email: 'admin@vishalmart.com', password: hashed, role: 'admin', isVerified: true });
     }
 
-    res.json({ message: 'Seeded successfully' });
+    const Product = require('./models/Product');
+    const count = await Product.countDocuments();
+    if (count === 0) {
+      const { products } = require('./seeder');
+      await Product.insertMany(products);
+    }
+    res.json({ message: 'Seeded successfully', products: await Product.countDocuments() });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -43,11 +43,7 @@ app.get('/api/seed', async (req, res) => {
       const hashed = await bcrypt.hash('Admin@123', 10);
       await User.create({ name: 'Admin', email: 'admin@vishalmart.com', password: hashed, role: 'admin', isVerified: true });
     }
-    const count = await Product.countDocuments();
-    if (count === 0) {
-      const { default: seederData } = await import('./seederData.js');
-      await Product.insertMany(seederData);
-    }
+
     res.json({ message: 'Seeded successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });

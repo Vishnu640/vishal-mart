@@ -1,16 +1,16 @@
-const { connectDB } = require('./config/db');
+require('dotenv').config();
+const mongoose = require('mongoose');
 const User = require('./models/User');
 const bcrypt = require('bcryptjs');
 
 (async () => {
-  await connectDB();
-  const existing = await User.findOne({ where: { email: 'admin@vishalmart.com' } });
+  await mongoose.connect(process.env.MONGO_URI);
+  const existing = await User.findOne({ email: 'admin@vishalmart.com' });
+  const hashed = await bcrypt.hash('Admin@123', 10);
   if (existing) {
-    const hashed = await bcrypt.hash('Admin@123', 10);
-    await existing.update({ password: hashed, role: 'admin', isVerified: true });
+    await User.findByIdAndUpdate(existing._id, { password: hashed, role: 'admin', isVerified: true });
     console.log('✅ Admin password reset to: Admin@123');
   } else {
-    const hashed = await bcrypt.hash('Admin@123', 10);
     await User.create({ name: 'Admin', email: 'admin@vishalmart.com', password: hashed, role: 'admin', isVerified: true });
     console.log('✅ Admin user created!');
   }

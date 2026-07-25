@@ -4,7 +4,6 @@ const cors = require('cors');
 const { connectDB } = require('./config/db');
 
 dotenv.config();
-connectDB();
 
 const app = express();
 
@@ -17,7 +16,14 @@ app.use('/api/orders', require('./routes/orderRoutes'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Connect DB then start server locally
+if (process.env.NODE_ENV !== 'production') {
+  connectDB().then(() => {
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  });
+} else {
+  connectDB();
+}
 
 module.exports = app;

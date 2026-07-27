@@ -26,7 +26,7 @@ export default function Home({ cart, setCart }) {
     setError('');
     API.get('/products')
       .then((res) => {
-        setProducts(res.data);
+        setProducts(res.data.map(p => ({ ...p, id: p._id || p.id })));
         const cats = ['All', ...new Set(res.data.map((p) => p.category))];
         setCategories(cats);
         setLoading(false);

@@ -13,16 +13,25 @@ import Feedback from './pages/Feedback';
 import Settings from './pages/Settings';
 
 export default function App() {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; }
+  });
+
+  const updateCart = (val) => {
+    const next = typeof val === 'function' ? val(cart) : val;
+    setCart(next);
+    localStorage.setItem('cart', JSON.stringify(next));
+  };
+
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Welcome />} />
-          <Route path="/home" element={<><Navbar cartCount={cart.length} /><Home cart={cart} setCart={setCart} /></>} />
+          <Route path="/home" element={<><Navbar cartCount={cart.length} /><Home cart={cart} setCart={updateCart} /></>} />
           <Route path="/login" element={<><Navbar cartCount={cart.length} /><Login /></>} />
           <Route path="/register" element={<><Navbar cartCount={cart.length} /><Register /></>} />
-          <Route path="/cart" element={<><Navbar cartCount={cart.length} /><Cart cart={cart} setCart={setCart} /></>} />
+          <Route path="/cart" element={<><Navbar cartCount={cart.length} /><Cart cart={cart} setCart={updateCart} /></>} />
           <Route path="/orders" element={<><Navbar cartCount={cart.length} /><Orders /></>} />
           <Route path="/admin" element={<><Navbar cartCount={cart.length} /><AdminDashboard /></>} />
           <Route path="/feedback" element={<><Navbar cartCount={cart.length} /><Feedback /></>} />

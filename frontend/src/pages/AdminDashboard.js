@@ -13,9 +13,11 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState({});
   const [filter, setFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('orders');
   const [newOrderIds, setNewOrderIds] = useState([]);
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [toast, setToast] = useState('');
@@ -25,15 +27,19 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!user || user.role !== 'admin') { navigate('/home'); return; }
     fetchOrders();
-    // Poll for new orders every 10 seconds
-    const interval = setInterval(fetchOrders, 10000);
+    fetchUsers();
+    const interval = setInterval(() => { fetchOrders(); fetchUsers(); }, 10000);
     return () => clearInterval(interval);
   }, [user, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchUsers = () => {
+    API.get('/auth/users').then(res => setUsers(res.data)).catch(() => {});
+  };
 
   const fetchOrders = () => {
     setLoading(true);
     API.get('/orders/all')
-      .then(res => { setOrders(res.data); setLoading(false); })
+      .then(res => { setOrders(res.data.map(o => ({ ...o, id: o._id }))); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
@@ -132,8 +138,63 @@ export default function AdminDashboard() {
             <p style={{ ...s.statNum, color: '#9c27b0' }}>₹{totalProfit.toLocaleString()}</p>
             <p style={s.statLabel}>📈 Total Profit</p>
           </div>
+          <div style={{ ...s.statCard, borderLeft: '4px solid #00897b' }}>
+            <p style={{ ...s.statNum, color: '#00897b' }}>{users.length}</p>
+            <p style={s.statLabel}>👥 Total Registrations</p>
+          </div>
+          <div style={{ ...s.statCard, borderLeft: '4px solid #e53935' }}>
+            <p style={{ ...s.statNum, color: '#e53935' }}>{users.filter(u => { const d = new Date(u.createdAt); const now = new Date(); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()); }).length}</p>
+            <p style={s.statLabel}>🆕 Today's Registrations</p>
+          </div>
         </div>
 
+        {/* Main Tabs */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <button onClick={() => setActiveTab('orders')} style={{ ...s.tab, ...(activeTab === 'orders' ? s.tabActive : {}) }}>📦 Orders</button>
+          <button onClick={() => setActiveTab('users')} style={{ ...s.tab, ...(activeTab === 'users' ? s.tabActive : {}) }}>👥 Registrations <span style={s.tabCount}>{users.length}</span></button>
+        </div>
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div>
+            <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ ...s.statCard, borderLeft: '4px solid #00897b', flex: 1, minWidth: 140 }}>
+                <p style={{ ...s.statNum, color: '#00897b' }}>{users.length}</p>
+                <p style={s.statLabel}>👥 Total Users</p>
+              </div>
+              <div style={{ ...s.statCard, borderLeft: '4px solid #1a73e8', flex: 1, minWidth: 140 }}>
+                <p style={{ ...s.statNum, color: '#1a73e8' }}>{users.filter(u => { const d = new Date(u.createdAt); const now = new Date(); return d >= new Date(now.getFullYear(), now.getMonth(), 1); }).length}</p>
+                <p style={s.statLabel}>📅 This Month</p>
+              </div>
+              <div style={{ ...s.statCard, borderLeft: '4px solid #ff6f00', flex: 1, minWidth: 140 }}>
+                <p style={{ ...s.statNum, color: '#ff6f00' }}>{users.filter(u => { const d = new Date(u.createdAt); const now = new Date(); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()); }).length}</p>
+                <p style={s.statLabel}>🆕 Today</p>
+              </div>
+            </div>
+            {users.length === 0 ? (
+              <div style={s.emptyBox}><div style={{ fontSize: 48 }}>👥</div><p style={{ fontWeight: 700, color: '#555', marginTop: 12 }}>No registrations yet</p></div>
+            ) : (
+              users.map((u, i) => (
+                <div key={u._id} style={{ ...s.card, display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'linear-gradient(135deg,#1a73e8,#0d47a1)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, flexShrink: 0 }}>
+                    {u.name?.[0]?.toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{u.name}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>📧 {u.email} {u.phone ? `• 📱 ${u.phone}` : ''}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#aaa' }}>📍 {u.city || '—'} • Joined {new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                  <span style={{ fontSize: 11, background: '#e8f5e9', color: '#34a853', padding: '4px 10px', borderRadius: 20, fontWeight: 700 }}>#{i + 1}</span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Orders Tab */}
+        {activeTab === 'orders' && (<>
+
+        {activeTab === 'orders' && (<>
         {/* Profit Breakdown */}
         <div style={s.profitRow}>
           <div style={s.profitCard}>
@@ -331,6 +392,7 @@ export default function AdminDashboard() {
             );
           })
         )}
+        </> )}
       </div>
     </div>
   );

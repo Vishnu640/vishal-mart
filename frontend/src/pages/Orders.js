@@ -33,7 +33,7 @@ export default function Orders() {
   const fetchOrders = () => {
     setLoading(true);
     API.get('/orders/my')
-      .then((res) => { setOrders(res.data); setStatuses({}); setLoading(false); })
+      .then((res) => { setOrders(res.data.map(o => ({ ...o, id: o._id }))); setStatuses({}); setLoading(false); })
       .catch(() => setLoading(false));
   };
 

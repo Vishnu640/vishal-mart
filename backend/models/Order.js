@@ -1,20 +1,21 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
 
-const OrderSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  items: { type: Array, required: true },
-  totalAmount: { type: Number, required: true },
-  street: String,
-  city: String,
-  pincode: String,
-  status: { type: String, enum: ['placed','confirmed','packed','out_for_delivery','delivered','cancelled','return_requested','returned'], default: 'placed' },
-  paymentMethod: { type: String, enum: ['cod','prepaid'], default: 'cod' },
-  paymentStatus: { type: String, enum: ['pending','paid'], default: 'pending' },
-  estimatedDelivery: Date,
-  deliveryAgentId: mongoose.Schema.Types.ObjectId,
-  couponCode: { type: String, default: null },
-  couponDiscount: { type: Number, default: 0 },
-  profitMargin: { type: Number, default: 20 }
+const Order = sequelize.define('Order', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  items: { type: DataTypes.JSON, allowNull: false },
+  totalAmount: { type: DataTypes.FLOAT, allowNull: false },
+  street: DataTypes.STRING,
+  city: DataTypes.STRING,
+  pincode: DataTypes.STRING,
+  status: { type: DataTypes.ENUM('placed','confirmed','packed','out_for_delivery','delivered','cancelled','return_requested','returned'), defaultValue: 'placed' },
+  paymentMethod: { type: DataTypes.ENUM('cod','prepaid'), defaultValue: 'cod' },
+  paymentStatus: { type: DataTypes.ENUM('pending','paid'), defaultValue: 'pending' },
+  estimatedDelivery: DataTypes.DATE,
+  couponCode: { type: DataTypes.STRING, defaultValue: null },
+  couponDiscount: { type: DataTypes.INTEGER, defaultValue: 0 },
+  profitMargin: { type: DataTypes.INTEGER, defaultValue: 20 }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Order', OrderSchema);
+module.exports = Order;

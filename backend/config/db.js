@@ -1,31 +1,17 @@
-const { Sequelize } = require('sequelize');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 3306,
-    dialect: 'mysql',
-    logging: false,
-    dialectOptions: {
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
-    }
-  }
-);
+let isConnected = false;
 
 const connectDB = async () => {
+  if (isConnected) return;
   try {
-    await sequelize.authenticate();
-    console.log('MySQL Connected Successfully');
-    await sequelize.sync({ force: false });
-    console.log('All tables synced');
-  } catch (error) {
-    console.error('DB Connection Failed:', error.message);
-    process.exit(1);
+    await mongoose.connect(process.env.MONGO_URI);
+    isConnected = true;
+    console.log('MongoDB Connected');
+  } catch (err) {
+    console.error('MongoDB connection failed:', err.message);
   }
 };
 
-module.exports = { sequelize, connectDB };
+module.exports = { connectDB };

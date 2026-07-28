@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
   street: String,
   city: String,
   pincode: String,
-  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  role: { type: String, default: 'user' },
   loginAttempts: { type: Number, default: 0 },
   isLocked: { type: Boolean, default: false },
   lockUntil: Date,

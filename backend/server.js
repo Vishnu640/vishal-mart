@@ -19,6 +19,19 @@ app.use('/api/orders', require('./routes/orderRoutes'));
 app.get('/', (req, res) => res.json({ message: 'Vishal Mart API is running' }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+app.get('/api/fixroles', async (req, res) => {
+  try {
+    const User = require('./models/User');
+    const result = await User.updateMany(
+      { role: { $nin: ['user', 'admin'] } },
+      { $set: { role: 'user' } }
+    );
+    res.json({ message: `Fixed ${result.modifiedCount} users` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.get('/api/seed', async (req, res) => {
   try {
     const User = require('./models/User');

@@ -90,7 +90,7 @@ exports.getProfile = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({ role: 'customer' }).select('-password -otp').sort({ createdAt: -1 });
+    const users = await User.find({ role: { $ne: 'admin' } }).select('-password -otp').sort({ createdAt: -1 });
     res.json(users);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };

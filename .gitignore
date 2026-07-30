@@ -4,5 +4,6 @@ node_modules/
 .env.production.local
 frontend/build/
 backend/server.log
-
+mongo_uri.txt
+response.txt
 .vercel

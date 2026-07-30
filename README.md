@@ -1,6 +1,6 @@
 # 🛒 Vishal Mart
 
-[![Tests](https://img.shields.io/badge/tests-42%20passing-brightgreen)](https://github.com/Vishnu640/vishal-mart)
+[![Backend Tests](https://github.com/Vishnu640/vishal-mart/actions/workflows/test.yml/badge.svg)](https://github.com/Vishnu640/vishal-mart/actions/workflows/test.yml)
 [![Node](https://img.shields.io/badge/node-20.x-green)](https://nodejs.org)
 [![React](https://img.shields.io/badge/react-18-blue)](https://reactjs.org)
 [![MongoDB](https://img.shields.io/badge/mongodb-mongoose-green)](https://mongoosejs.com)

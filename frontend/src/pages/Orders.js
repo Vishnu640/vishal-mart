@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import API from '../api/axios';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const steps = ['placed', 'confirmed', 'packed', 'out_for_delivery', 'delivered'];
 const stepIcons = ['📦', '✅', '📫', '🚚', '🎉'];
@@ -76,6 +78,125 @@ export default function Orders() {
     setPayStep(3);
     setPayLoading(false);
     setTimeout(() => { setShowPaymentModal(null); setPayStep(1); setUpiId(''); fetchOrders(); }, 2500);
+  };
+
+  const generateInvoice = (order) => {
+    const doc = new jsPDF();
+    const invoiceNo = `VM-${order.id.slice(-8).toUpperCase()}`;
+    const orderDate = new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Header background
+    doc.setFillColor(13, 71, 161);
+    doc.rect(0, 0, 210, 38, 'F');
+
+    // Logo text
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VISHAL MART', 14, 18);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Fresh products delivered to your door in 4 hours', 14, 26);
+    doc.text('vishalmart.com  |  support@vishalmart.com', 14, 33);
+
+    // Invoice label on right
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVOICE', 196, 18, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Invoice No: ${invoiceNo}`, 196, 26, { align: 'right' });
+    doc.text(`Date: ${orderDate}`, 196, 33, { align: 'right' });
+
+    // Reset color
+    doc.setTextColor(30, 30, 30);
+
+    // Bill To section
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BILL TO', 14, 50);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Order ID: #${order.id}`, 14, 57);
+    if (order.street) doc.text(order.street, 14, 63);
+    doc.text(`${order.city || ''}${order.pincode ? ' - ' + order.pincode : ''}`, 14, order.street ? 69 : 63);
+
+    // Payment info on right
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('PAYMENT INFO', 130, 50);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Method: ${order.paymentMethod === 'prepaid' ? 'Prepaid (Online)' : 'Cash on Delivery'}`, 130, 57);
+    doc.text(`Status: ${order.paymentStatus === 'paid' ? 'PAID' : 'PENDING'}`, 130, 63);
+    doc.text(`Order Status: ${order.status.replace(/_/g, ' ').toUpperCase()}`, 130, 69);
+
+    // Divider
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, 76, 196, 76);
+
+    // Items table
+    const rows = (order.items || []).map((item, i) => [
+      i + 1,
+      `Product #${String(item.product).slice(-8)}`,
+      item.quantity,
+      `Rs. ${item.price.toFixed(2)}`,
+      `Rs. ${(item.price * item.quantity).toFixed(2)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: 80,
+      head: [['#', 'Product', 'Qty', 'Unit Price', 'Total']],
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [26, 115, 232], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+      bodyStyles: { fontSize: 9, textColor: [50, 50, 50] },
+      columnStyles: { 0: { cellWidth: 10 }, 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 8;
+
+    // Totals
+    const subtotal = (order.items || []).reduce((s, i) => s + i.price * i.quantity, 0);
+    const delivery = order.totalAmount - subtotal > 0 ? order.totalAmount - subtotal : 0;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Subtotal:`, 140, finalY);
+    doc.text(`Rs. ${subtotal.toFixed(2)}`, 196, finalY, { align: 'right' });
+
+    if (delivery > 0) {
+      doc.text(`Delivery Fee:`, 140, finalY + 6);
+      doc.text(`Rs. ${delivery.toFixed(2)}`, 196, finalY + 6, { align: 'right' });
+    }
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(130, finalY + 10, 196, finalY + 10);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(229, 57, 53);
+    doc.text('GRAND TOTAL:', 140, finalY + 17);
+    doc.text(`Rs. ${order.totalAmount.toFixed(2)}`, 196, finalY + 17, { align: 'right' });
+
+    // Coupon if any
+    doc.setTextColor(30, 30, 30);
+    if (order.couponCode) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(52, 168, 83);
+      doc.text(`Coupon Applied: ${order.couponCode}  (-Rs. ${order.couponDiscount || 0})`, 14, finalY + 17);
+    }
+
+    // Footer
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Thank you for shopping with Vishal Mart! For support: support@vishalmart.com', 105, 285, { align: 'center' });
+    doc.text('This is a computer-generated invoice and does not require a signature.', 105, 290, { align: 'center' });
+
+    doc.save(`Vishal-Mart-Invoice-${invoiceNo}.pdf`);
   };
 
   if (loading) return (
@@ -265,6 +386,11 @@ export default function Orders() {
                           ↩️ Return Product
                         </button>
                       )}
+                      {currentStatus === 'delivered' && (
+                        <button onClick={() => generateInvoice(order)} style={s.invoiceBtn}>
+                          🧾 Download Invoice
+                        </button>
+                      )}
                       {isPrepaidPending && (
                         <button onClick={() => { setShowPaymentModal(order.id); setPayStep(1); }} style={s.payNowBtnLg}>
                           💳 Complete Payment
@@ -363,6 +489,7 @@ const s = {
   actions: { display: 'flex', gap: 10, flexWrap: 'wrap', paddingTop: 4 },
   cancelBtn: { padding: '9px 20px', background: 'linear-gradient(135deg,#e53935,#b71c1c)', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700 },
   returnBtn: { padding: '9px 20px', background: 'linear-gradient(135deg,#ff6f00,#e65100)', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700 },
+  invoiceBtn: { padding: '9px 20px', background: 'linear-gradient(135deg,#34a853,#1e7e34)', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(52,168,83,0.3)' },
   modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
   modal: { background: 'white', borderRadius: 24, padding: 28, width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
   modalTitle: { fontWeight: 800, fontSize: 20, color: '#1a1a2e', margin: '0 0 4px' },

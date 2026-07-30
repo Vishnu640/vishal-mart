@@ -10,7 +10,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -53,10 +52,9 @@ export default function Register() {
     if (!form.phone || form.phone.length !== 10) return setError('Enter a valid 10-digit phone number');
     setOtpLoading(true); setError('');
     try {
-      const res = await API.post('/auth/send-otp', { phone: form.phone });
-      setGeneratedOtp(res.data.otp);
+      await API.post('/auth/send-otp', { phone: form.phone });
       setOtpSent(true);
-      setOtpTimer(300);
+      setOtpTimer(60);
       const interval = setInterval(() => {
         setOtpTimer(t => { if (t <= 1) { clearInterval(interval); return 0; } return t - 1; });
       }, 1000);
@@ -64,9 +62,11 @@ export default function Register() {
     setOtpLoading(false);
   };
 
-  const verifyOtp = () => {
-    if (otp === generatedOtp) { setOtpVerified(true); setError(''); }
-    else setError('Invalid OTP. Please try again.');
+  const verifyOtp = async () => {
+    try {
+      const res = await API.post('/auth/verify-otp', { phone: form.phone, otp });
+      if (res.data.verified) { setOtpVerified(true); setError(''); }
+    } catch (err) { setError(err.response?.data?.message || 'Invalid OTP'); }
   };
 
   const detectLocation = () => {
@@ -186,10 +186,10 @@ export default function Register() {
 
             {otpSent && !otpVerified && (
               <div style={s.otpBox}>
-                <div style={s.otpDemoBox}>
-                  📲 Demo OTP: <strong style={{ color: '#1a73e8', letterSpacing: 3 }}>{generatedOtp}</strong>
+                <p style={{ fontSize: 13, color: '#555', margin: '0 0 10px', fontFamily: 'Poppins' }}>
+                  📲 OTP sent to <strong>+91 {form.phone}</strong>
                   {otpTimer > 0 && <span style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>({Math.floor(otpTimer/60)}:{String(otpTimer%60).padStart(2,'0')})</span>}
-                </div>
+                </p>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input style={{ ...s.input, letterSpacing: 6, textAlign: 'center', fontWeight: 800, fontSize: 18 }}
                     placeholder="Enter OTP" value={otp} onChange={e => setOtp(e.target.value)} maxLength={6} />
@@ -255,6 +255,5 @@ const s = {
   link: { color: '#1a73e8', fontWeight: 700, textDecoration: 'none' },
   otpBtn: { position: 'absolute', right: 8, background: 'linear-gradient(135deg,#1a73e8,#0d47a1)', color: 'white', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' },
   otpBox: { background: '#f0f7ff', borderRadius: 12, padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 },
-  otpDemoBox: { fontSize: 13, color: '#555', fontFamily: 'Poppins', background: '#e8f0fe', padding: '8px 12px', borderRadius: 8, textAlign: 'center' },
   locBtn: { width: '100%', padding: '11px', background: 'linear-gradient(135deg,#34a853,#1e7e34)', color: 'white', border: 'none', borderRadius: 12, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Poppins', marginBottom: 12 },
 };

@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import API from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import {
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 
 const ORDER_STEPS = ['placed', 'confirmed', 'packed', 'out_for_delivery', 'delivered'];
 const STEP_LABELS = { placed: '📦 Placed', confirmed: '✅ Confirmed', packed: '📫 Packed', out_for_delivery: '🚚 Out for Delivery', delivered: '🎉 Delivered', cancelled: '❌ Cancelled', return_requested: '↩️ Return Requested', returned: '✔️ Returned' };
@@ -149,9 +153,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* Main Tabs */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
           <button onClick={() => setActiveTab('orders')} style={{ ...s.tab, ...(activeTab === 'orders' ? s.tabActive : {}) }}>📦 Orders</button>
           <button onClick={() => setActiveTab('users')} style={{ ...s.tab, ...(activeTab === 'users' ? s.tabActive : {}) }}>👥 Registrations <span style={s.tabCount}>{users.length}</span></button>
+          <button onClick={() => setActiveTab('analytics')} style={{ ...s.tab, ...(activeTab === 'analytics' ? s.tabActive : {}) }}>📊 Analytics</button>
         </div>
 
         {/* Users Tab */}
@@ -191,9 +196,10 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Orders Tab */}
-        {activeTab === 'orders' && (<>
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && <AnalyticsTab orders={orders} />}
 
+        {/* Orders Tab */}
         {activeTab === 'orders' && (<>
         {/* Profit Breakdown */}
         <div style={s.profitRow}>
@@ -449,3 +455,192 @@ const s = {
   profitStat: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   profitLabel: { fontSize: 12, color: '#888', fontWeight: 600 },
 };
+
+// ─── Analytics Tab ────────────────────────────────────────────────────────────
+
+const CHART_COLORS = ['#1a73e8', '#34a853', '#ff6f00', '#9c27b0', '#00897b', '#e53935', '#f57c00', '#607d8b'];
+
+const CustomTooltip = ({ active, payload, label, prefix = '' }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: 'white', border: '1px solid #e8f0fe', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontFamily: 'Poppins' }}>
+      <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 12, color: '#555' }}>{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} style={{ margin: '2px 0', fontSize: 13, fontWeight: 700, color: p.color }}>
+          {p.name}: {prefix}{typeof p.value === 'number' ? p.value.toLocaleString() : p.value}
+        </p>
+      ))}
+    </div>
+  );
+};
+
+function AnalyticsTab({ orders }) {
+  const analytics = useMemo(() => {
+    // Monthly revenue + order count (last 6 months)
+    const monthMap = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+      monthMap[key] = { month: key, revenue: 0, orders: 0 };
+    }
+    orders.forEach(o => {
+      const d = new Date(o.createdAt);
+      const key = d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+      if (monthMap[key]) {
+        monthMap[key].revenue += o.totalAmount;
+        monthMap[key].orders += 1;
+      }
+    });
+    const monthly = Object.values(monthMap);
+
+    // Order status distribution
+    const statusCount = {};
+    orders.forEach(o => { statusCount[o.status] = (statusCount[o.status] || 0) + 1; });
+    const statusData = Object.entries(statusCount).map(([name, value]) => ({ name, value }));
+
+    // Top 5 selling products by quantity
+    const productMap = {};
+    orders.forEach(o => {
+      (o.items || []).forEach(item => {
+        if (!item || !item.product) return;
+        const key = String(item.product);
+        if (!productMap[key]) productMap[key] = { name: `Product ${key.slice(-6)}`, qty: 0, revenue: 0 };
+        productMap[key].qty += item.quantity || 0;
+        productMap[key].revenue += (item.price || 0) * (item.quantity || 0);
+      });
+    });
+    const topProducts = Object.values(productMap)
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5);
+
+    // Payment method split
+    const codTotal = orders.filter(o => o.paymentMethod === 'cod').reduce((s, o) => s + o.totalAmount, 0);
+    const prepaidTotal = orders.filter(o => o.paymentMethod === 'prepaid').reduce((s, o) => s + o.totalAmount, 0);
+    const paymentData = [
+      { name: 'Cash on Delivery', value: codTotal },
+      { name: 'Prepaid (Online)', value: prepaidTotal },
+    ].filter(d => d.value > 0);
+
+    // Delivered vs non-delivered revenue
+    const deliveredRevenue = orders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.totalAmount, 0);
+    const totalRevenue = orders.reduce((s, o) => s + o.totalAmount, 0);
+
+    return { monthly, statusData, topProducts, paymentData, deliveredRevenue, totalRevenue };
+  }, [orders]);
+
+  const chartBox = {
+    background: 'rgba(255,255,255,0.88)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 20,
+    padding: '20px 16px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.07)',
+    border: '1px solid rgba(26,115,232,0.08)',
+    marginBottom: 20,
+  };
+  const chartTitle = { fontWeight: 800, fontSize: 15, color: '#1a1a2e', margin: '0 0 16px', fontFamily: 'Poppins' };
+
+  if (orders.length === 0) return (
+    <div style={{ textAlign: 'center', padding: '60px 20px', background: 'rgba(255,255,255,0.7)', borderRadius: 20 }}>
+      <div style={{ fontSize: 56 }}>📊</div>
+      <p style={{ fontWeight: 700, color: '#555', marginTop: 12 }}>No order data yet to show analytics</p>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Summary KPI row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 14, marginBottom: 20 }}>
+        {[
+          { label: 'Total Revenue', value: `₹${analytics.totalRevenue.toLocaleString()}`, color: '#34a853', icon: '💰' },
+          { label: 'Delivered Revenue', value: `₹${analytics.deliveredRevenue.toLocaleString()}`, color: '#1a73e8', icon: '✅' },
+          { label: 'Total Orders', value: orders.length, color: '#ff6f00', icon: '📦' },
+          { label: 'Avg Order Value', value: `₹${orders.length ? Math.round(analytics.totalRevenue / orders.length).toLocaleString() : 0}`, color: '#9c27b0', icon: '📈' },
+        ].map(k => (
+          <div key={k.label} style={{ background: 'rgba(255,255,255,0.88)', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', borderLeft: `4px solid ${k.color}` }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: k.color, margin: 0 }}>{k.icon} {k.value}</p>
+            <p style={{ fontSize: 11, color: '#888', margin: '4px 0 0', fontWeight: 600 }}>{k.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Monthly Revenue — Line Chart */}
+      <div style={chartBox}>
+        <p style={chartTitle}>📈 Monthly Revenue (Last 6 Months)</p>
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={analytics.monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'Poppins' }} />
+            <YAxis tick={{ fontSize: 11, fontFamily: 'Poppins' }} tickFormatter={v => `₹${v.toLocaleString()}`} />
+            <Tooltip content={<CustomTooltip prefix="₹" />} />
+            <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#1a73e8" strokeWidth={3} dot={{ r: 5, fill: '#1a73e8' }} activeDot={{ r: 7 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Orders by Month — Bar Chart */}
+      <div style={chartBox}>
+        <p style={chartTitle}>📦 Orders by Month (Last 6 Months)</p>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={analytics.monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'Poppins' }} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 11, fontFamily: 'Poppins' }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="orders" name="Orders" fill="#34a853" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Two pies side by side */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+
+        {/* Order Status Pie */}
+        <div style={{ ...chartBox, marginBottom: 0 }}>
+          <p style={chartTitle}>🔄 Orders by Status</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={analytics.statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name.replace('_', ' ')} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                {analytics.statusData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </Pie>
+              <Tooltip formatter={(v, n) => [v, n.replace('_', ' ')]} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Payment Method Pie */}
+        <div style={{ ...chartBox, marginBottom: 0 }}>
+          <p style={chartTitle}>💳 Revenue by Payment Method</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={analytics.paymentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}>
+                <Cell fill="#ff6f00" />
+                <Cell fill="#1a73e8" />
+              </Pie>
+              <Tooltip formatter={v => [`₹${v.toLocaleString()}`]} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Top Products — Horizontal Bar */}
+      {analytics.topProducts.length > 0 && (
+        <div style={chartBox}>
+          <p style={chartTitle}>🏆 Top 5 Products by Quantity Sold</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={analytics.topProducts} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fontFamily: 'Poppins' }} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontFamily: 'Poppins' }} width={70} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="qty" name="Units Sold" radius={[0, 6, 6, 0]}>
+                {analytics.topProducts.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}

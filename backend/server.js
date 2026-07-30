@@ -1,64 +1,51 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
 const { connectDB } = require('./config/db');
+const { errorHandler } = require('./middleware/errorHandler');
+const swaggerSpec = require('./swagger');
 
 dotenv.config();
+connectDB();
 
 const app = express();
 
-app.use(cors({ origin: '*', credentials: true }));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(o => o.trim());
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
-app.use(async (req, res, next) => { await connectDB(); next(); });
-
-app.use('/api/auth', require('./routes/authRoutes'));
+// API Routes
+app.use('/api/auth',     require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
-app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/orders',   require('./routes/orderRoutes'));
 
-app.get('/', (req, res) => res.json({ message: 'Vishal Mart API is running' }));
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+// Swagger UI — available at /api-docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'Vishal Mart API Docs',
+  customCss: '.swagger-ui .topbar { background: linear-gradient(135deg, #0d47a1, #1a73e8); }',
+}));
 
-app.get('/api/fixroles', async (req, res) => {
-  try {
-    const User = require('./models/User');
-    const result = await User.updateMany(
-      { role: { $nin: ['user', 'admin'] } },
-      { $set: { role: 'user' } }
-    );
-    res.json({ message: `Fixed ${result.modifiedCount} users` });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+// Health check
+app.get('/',           (req, res) => res.json({ success: true, data: { message: 'Vishal Mart API Running', docs: '/api-docs' } }));
+app.get('/api/health', (req, res) => res.json({ success: true, data: { status: 'ok' } }));
+
+// 404 handler for unknown routes
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: `Route ${req.method} ${req.originalUrl} not found` });
 });
 
-app.get('/api/seed', async (req, res) => {
-  try {
-    const User = require('./models/User');
-    const Product = require('./models/Product');
-    const bcrypt = require('bcryptjs');
+// Global error handler — must be last
+app.use(errorHandler);
 
-    const existing = await User.findOne({ email: 'admin@vishalmart.com' });
-    if (!existing) {
-      const hashed = await bcrypt.hash('Admin@123', 10);
-      await User.create({ name: 'Admin', email: 'admin@vishalmart.com', password: hashed, role: 'admin' });
-    }
-
-    const count = await Product.countDocuments();
-    if (count === 0) {
-      const { products } = require('./seeder');
-      await Product.insertMany(products);
-    }
-
-    res.json({ message: 'Seeded successfully' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5001;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}\nAPI Docs: http://localhost:${PORT}/api-docs`));
 
 module.exports = app;
